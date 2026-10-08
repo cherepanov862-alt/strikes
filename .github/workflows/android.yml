@@ -1,0 +1,41 @@
+name: Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build APK
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Rename
+        run: cp app/build/outputs/apk/release/app-release.apk MansionStrike2.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MansionStrike2-apk
+          path: MansionStrike2.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: Mansion Strike 2 (сборка ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: APK для Android. Скачайте MansionStrike2.apk и установите (разрешите установку из неизвестных источников).
+          files: MansionStrike2.apk
