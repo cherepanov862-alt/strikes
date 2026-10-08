@@ -3,6 +3,7 @@ package ru.mansionstrike;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,7 +22,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+        useFastestRefreshRate();
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -30,6 +33,8 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // keep the page's GPU process at foreground priority so the game is not throttled
+        web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         web.setWebViewClient(new WebViewClient());
         web.setWebChromeClient(new WebChromeClient());
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -55,6 +60,20 @@ public class MainActivity extends Activity {
             }
             return false;
         });
+    }
+
+    /** Ask for the display's highest refresh rate (90/120/144 Hz panels) at the current resolution. */
+    private void useFastestRefreshRate() {
+        Display d = getWindowManager().getDefaultDisplay();
+        Display.Mode cur = d.getMode(), best = cur;
+        for (Display.Mode m : d.getSupportedModes()) {
+            if (m.getPhysicalWidth() == cur.getPhysicalWidth() && m.getPhysicalHeight() == cur.getPhysicalHeight()
+                    && m.getRefreshRate() > best.getRefreshRate()) best = m;
+        }
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.preferredDisplayModeId = best.getModeId();
+        lp.preferredRefreshRate = best.getRefreshRate();
+        getWindow().setAttributes(lp);
     }
 
     private void js(String code) {
